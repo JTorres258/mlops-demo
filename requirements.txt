@@ -1,3 +1,6 @@
 black
 pylint
 pytest
+mlflow
+pandas
+sklearn
