@@ -6,7 +6,7 @@ mlflow
 pandas
 scikit-learn
 optuna
-tensorflow
+tensorflow[and-cuda]
 tensorflow_datasets
 fastapi
 uvicorn[standard]
