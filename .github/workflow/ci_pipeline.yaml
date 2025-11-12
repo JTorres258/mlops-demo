@@ -1,0 +1,40 @@
+# This is just the display name of your workflow
+name: CI
+
+# This defines when the workflow runs.
+on:
+  push:
+    branches: [ main ]
+
+# A workflow can have one or more jobs — each runs independently (or sequentially if needed).
+jobs:
+  build:
+    # The type of machine to run the job on
+    runs-on: ubuntu-latest
+
+    # Steps represent a sequence of tasks that will be executed as part of the job
+    steps:
+      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
+      - uses: actions/checkout@v4
+
+      # Sets up Python 3.12
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: 3.12
+
+      # Installs dependencies
+      - name: Install dependencies
+        run: make install
+
+      #Lints code
+      - name: Lint with pylint
+        run: make lint
+
+      # Formating code
+      - name: Format with Python Black
+        run: make format
+
+      # Runs tests
+      - name: Run tests
+        run: make test
