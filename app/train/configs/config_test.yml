@@ -1,0 +1,14 @@
+resize: [64, 64]
+normalize: true
+dtype: float32
+
+augment:
+  flip_left_right: true
+  flip_up_down: false
+  random_crop:
+
+shuffle: true
+shuffle_buffer_size: 2048
+batch_size: 64
+drop_remainder: false
+prefetch: true

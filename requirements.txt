@@ -13,3 +13,5 @@ uvicorn[standard]
 pillow
 python-multipart
 jinja2
+pydantic
+pyyaml
