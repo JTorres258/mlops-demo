@@ -1,15 +1,33 @@
-resize:
-normalize: true
-dtype: float32
+data:
+  input_size: [224, 224]
+  normalize: true
+  dtype: float32
+
+pipeline:
+  cache: false
+  shuffle: false
+  shuffle_buffer_size: 128
+  batch_size: 1
+  drop_remainder: false
+  prefetch: true
 
 augment:
   flip_left_right: true
   flip_up_down: false
-  random_crop: [128, 128]
+  random_crop: [180, 180]
+  brightness: null
 
-cache: true
-shuffle: true
-shuffle_buffer_size: 128
-batch_size: 16
-drop_remainder: false
-prefetch: true
+train:
+  epochs: 5
+  learning_rate: 0.001
+  optimizer: adam        # adam | sgd | rmsprop
+  loss: sparse_categorical_crossentropy
+  metrics: ["accuracy"]
+  seed: 42
+  mixed_precision: false
+  strategy: auto         # auto | single | mirrored | tpu
+
+model:
+  architecture: EfficientNetV2B0
+  weights: imagenet
+  num_classes: 120

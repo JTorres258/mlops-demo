@@ -9,28 +9,49 @@ def test_valid_yaml_loads(tmp_path):
     good_yaml.write_text(
         dedent(
             """
-        resize: [64, 64]
-        normalize: true
-        dtype: float32
+        data:
+            input_size: [224, 224]
+            normalize: true
+            dtype: float32
+
+        pipeline:
+            cache: true
+            shuffle: true
+            shuffle_buffer_size: 128
+            batch_size: 8
+            drop_remainder: false
+            prefetch: true
+
         augment:
-          flip_left_right: false
-          flip_up_down: false
-          random_crop:
-        shuffle: true
-        shuffle_buffer_size: 2048
-        batch_size: 64
-        drop_remainder: false
-        prefetch: true
+            flip_left_right: true
+            flip_up_down: false
+            random_crop: [180, 180]
+            brightness: null
+
+        train:
+            epochs: 5
+            learning_rate: 0.001
+            optimizer: adam        # adam | sgd | rmsprop
+            loss: sparse_categorical_crossentropy
+            metrics: ["accuracy"]
+            seed: 42
+            mixed_precision: false
+            strategy: auto         # auto | single | mirrored | tpu
+
+        model:
+            architecture: EfficientNetV2B0
+            weights: imagenet
+            num_classes: 120
     """
         ),
         encoding="utf-8",
     )
 
     cfg = load_config(good_yaml)  # returns a DataConfig if your loader does validation
-    assert cfg.resize == (64, 64)
-    assert cfg.normalize is True
-    assert cfg.batch_size == 64
-    assert cfg.augment.flip_left_right is False
+    assert cfg.data.input_size == (224, 224)
+    assert cfg.data.normalize is True
+    assert cfg.pipeline.batch_size == 8
+    assert cfg.augment.flip_left_right is True
 
 
 def test_flip_left_right_conflicts_with_resize(tmp_path):
@@ -38,18 +59,39 @@ def test_flip_left_right_conflicts_with_resize(tmp_path):
     bad_yaml.write_text(
         dedent(
             """
-        resize: [64, 64]
-        normalize: true
-        dtype: float32
+        data:
+            input_size: [224, 224]
+            normalize: true
+            dtype: float32
+
+        pipeline:
+            cache: true
+            shuffle: true
+            shuffle_buffer_size: 128
+            batch_size: 8
+            drop_remainder: false
+            prefetch: true
+
         augment:
-          flip_left_right: true
-          flip_up_down: false
-          random_crop: [128, 128]
-        shuffle: true
-        shuffle_buffer_size: 2048
-        batch_size: 64
-        drop_remainder: false
-        prefetch: true
+            flip_left_right: true
+            flip_up_down: false
+            random_crop: [180, 180]
+            brightness: 0.1
+
+        train:
+            epochs: 5
+            learning_rate: 0.001
+            optimizer: adam        # adam | sgd | rmsprop
+            loss: sparse_categorical_crossentropy
+            metrics: ["accuracy"]
+            seed: 42
+            mixed_precision: false
+            strategy: auto         # auto | single | mirrored | tpu
+
+        model:
+            architecture: EfficientNetV2B0
+            weights: imagenet
+            num_classes: 120
     """
         ),
         encoding="utf-8",
@@ -59,7 +101,7 @@ def test_flip_left_right_conflicts_with_resize(tmp_path):
         _ = load_config(bad_yaml)
 
     # Optional: assert message contains your custom text
-    assert "resize cannot be used" in str(exc.value)
+    assert "brightness cannot be used" in str(exc.value)
 
 
 def test_batch_size_must_be_positive(tmp_path):

@@ -6,6 +6,30 @@ import os
 os.chdir(os.path.dirname(os.path.realpath(__file__)))
 
 
+class DataConfig(BaseModel):
+    """Configuration for input data."""
+
+    # Preprocessing
+    input_size: Tuple[
+            Annotated[int, Field(strict=True, gt=0)],
+            Annotated[int, Field(strict=True, gt=0)],
+        ] = [224, 224]  # (H, W) > 0
+    normalize: bool = True
+    dtype: Literal["float32", "float16"] = "float32"
+
+
+class PipelineConfig(BaseModel):
+    """Configuration for data pipeline."""
+
+    # Pipeline
+    cache: bool = False
+    shuffle: bool = True
+    shuffle_buffer_size: Annotated[int, Field(strict=True, gt=0)] = 1024
+    batch_size: Annotated[int, Field(strict=True, gt=0)] = 64
+    drop_remainder: bool = False
+    prefetch: bool = True
+
+
 class AugmentConfig(BaseModel):
     """Configuration for data augmentation."""
 
@@ -17,46 +41,51 @@ class AugmentConfig(BaseModel):
             Annotated[int, Field(strict=True, gt=0)],
         ]
     ] = None  # (H, W) > 0
+    brightness: Optional[float] = None # e.g., 0.1 for ±10% brightness adjustment
 
 
-class DataConfig(BaseModel):
-    """Configuration for dataset preprocessing."""
+class TrainConfig(BaseModel):
+    """Configuration for training."""
 
-    # Preprocessing
-    resize: Optional[
-        Tuple[
-            Annotated[int, Field(strict=True, gt=0)],
-            Annotated[int, Field(strict=True, gt=0)],
-        ]
-    ] = None  # (H, W) > 0
-    normalize: bool = True
-    dtype: Literal["float32", "float16"] = "float32"
+    epochs: Annotated[int, Field(strict=True, gt=0)] = 10
+    learning_rate: Annotated[float, Field(strict=True, gt=0)] = 0.001
+    optimizer: str = "adam"
+    loss: str = "sparse_categorical_crossentropy"
+    metrics: list[str] = ["accuracy"]
+    seed: Annotated[int, Field(strict=True, gt=0)] = 42
+    mixed_precision: bool = False
+    strategy: str = "auto"         # auto | single | mirrored | tpu
 
-    # Data Augmentation
+
+class ModelConfig(BaseModel):
+    """Configuration for model architecture."""
+
+    architecture: str = "resnet50"
+    weights: Optional[str] = None
+    num_classes: Annotated[int, Field(strict=True, gt=1)] = 1000
+
+
+class ExperimentConfig(BaseModel):
+    data: DataConfig
+    pipeline: PipelineConfig
     augment: Optional[AugmentConfig] = None
-
-    # Pipeline
-    cache: bool = False
-    shuffle: bool = True
-    shuffle_buffer_size: Annotated[int, Field(strict=True, gt=0)] = 1024
-    batch_size: Annotated[int, Field(strict=True, gt=0)] = 64
-    drop_remainder: bool = False
-    prefetch: bool = True
+    train: TrainConfig
+    model: ModelConfig
 
     # Cross-field validation happens *after* all fields are parsed
     @model_validator(mode="after")
     def check_flip_and_resize(self):
-        if self.augment and self.augment.random_crop and self.resize is not None:
-            raise ValueError("resize cannot be used when flip_left_right is True.")
+        if self.augment and self.augment.random_crop and self.augment.brightness:
+            raise ValueError("brightness cannot be used when flip_left_right is True (stupid example).")
         return self
+    
 
-
-def load_config(path: str) -> DataConfig:
+def load_config(path: str) -> ExperimentConfig:
     """Load preprocessing configuration from a YAML file."""
 
     with open(path) as f:
         cfg_dict = yaml.safe_load(f)
-    return DataConfig(**cfg_dict)
+    return ExperimentConfig(**cfg_dict)
 
 
 if __name__ == "__main__":
