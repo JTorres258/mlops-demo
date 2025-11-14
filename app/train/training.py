@@ -22,11 +22,11 @@ ds_raw, ds_info = get_dataset(split="train")
 ds = prepare_dataset(ds_raw, cfg, training=True)
 
 # Split in train/val
-train_size = ds_info.splits["train"].num_examples
-val_size = int(0.1 * train_size)
+data_size = tf.data.experimental.cardinality(ds).numpy()
+val_size = int(0.1 * data_size)
 
-raw_train = ds.shuffle(train_size, seed=cfg.train.seed, reshuffle_each_iteration=False)
-ds_val   = raw_train.take(val_size)
+raw_train = ds.shuffle(data_size, seed=cfg.train.seed, reshuffle_each_iteration=False)
+ds_val = raw_train.take(val_size)
 ds_train = raw_train.skip(val_size)
 
 # Backbone model
@@ -73,8 +73,8 @@ model.compile(
 if cfg.train.mixed_precision:
     tf.keras.mixed_precision.set_global_policy('mixed_float16')
 
-Path("./models/checkpoints/").mkdir(parents=True, exist_ok=True)
-ckpt_path = os.path.join("./models/checkpoints/", "ckpt-{epoch:02d}-{val_loss:.4f}.keras")
+Path(cfg.train.checkpoint_dir).mkdir(parents=True, exist_ok=True)
+ckpt_path = os.path.join(cfg.train.checkpoint_dir, "ckpt-{epoch:02d}-{val_loss:.4f}.keras")
 callbacks = [
         tf.keras.callbacks.ModelCheckpoint(
             filepath=ckpt_path,
@@ -93,8 +93,8 @@ model.fit(
 )
 
 # Save final model with best weights
-best_model_path = max(Path("./models/checkpoints/").glob("ckpt-*.keras"))
+best_model_path = max(Path(cfg.train.checkpoint_dir).glob("ckpt-*.keras"))
 model = tf.keras.models.load_model(best_model_path)
 
-Path("./models/").mkdir(parents=True, exist_ok=True)
+Path(cfg.train.model_dir).mkdir(parents=True, exist_ok=True)
 model.save(os.path.join(cfg.train.model_dir, "model.keras"))

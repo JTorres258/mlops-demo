@@ -46,7 +46,8 @@ class AugmentConfig(BaseModel):
 
 class TrainConfig(BaseModel):
     """Configuration for training."""
-
+    model_dir: Optional[str] = "./models/"
+    checkpoint_dir: Optional[str] = "./models/checkpoints/"
     epochs: Annotated[int, Field(strict=True, gt=0)] = 10
     learning_rate: Annotated[float, Field(strict=True, gt=0)] = 0.001
     optimizer: str = "adam"
@@ -65,7 +66,7 @@ class ModelConfig(BaseModel):
     num_classes: Annotated[int, Field(strict=True, gt=1)] = 1000
     drop_rate: Annotated[float, Field(strict=True, ge=0)] = 0.5
     freeze_backbone: bool = False
-
+    
 
 class ExperimentConfig(BaseModel):
     data: DataConfig

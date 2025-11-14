@@ -54,7 +54,7 @@ def prepare_dataset(
 
     # Preprocessing mapping
     map_fn = partial(data_preprocessing, config=config, training=training)
-    dataset = dataset.map(map_fn, num_parallel_calls=1)
+    dataset = dataset.map(map_fn, num_parallel_calls=tf.data.AUTOTUNE)
 
     # Retrieve pipeline config
     pipe = config.pipeline
@@ -72,7 +72,7 @@ def prepare_dataset(
 
     # Prefetch to overlap CPU prep & device compute
     if pipe.prefetch:
-        dataset = dataset.prefetch(1)
+        dataset = dataset.prefetch(tf.data.AUTOTUNE)
 
     return dataset
 
@@ -100,9 +100,9 @@ def data_preprocessing(
     if dat.input_size:
         image = tf.image.resize(image, dat.input_size)
 
-    # Normalization: [0, 255] => [0, 1] floats
+    # Normalization: [0, 255] => [-1, 1] floats
     if dat.normalize:
-        image = tf.cast(image, tf.float32) * (1.0 / 255.0)
+        image = tf.cast(image, tf.float32) * (1.0 / 127.5) - 1.0
         if dat.dtype == "float16":
             image = tf.cast(image, tf.float16)
 
@@ -171,6 +171,7 @@ if __name__ == "__main__":
     config = load_config("./configs/config_test.yml")
     train_ds, ds_info = get_dataset(split="train")
     
+    setattr(config.pipeline, "shuffle", False)
     train_ds_prepared = prepare_dataset(train_ds, config, training=True)
     for batch in train_ds_prepared.take(1):
         images, labels = batch

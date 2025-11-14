@@ -7,24 +7,26 @@ pipeline:
   cache: false
   shuffle: True
   shuffle_buffer_size: 512
-  batch_size: 8
+  batch_size: 16
   drop_remainder: false
   prefetch: true
 
 augment:
   flip_left_right: true
-  flip_up_down: false
-  random_crop: null
+  flip_up_down: true
+  random_crop: [180, 180]
   brightness: null
 
 train:
-  epochs: 5
+  model_dir: ./models/
+  checkpoint_dir: ./models/checkpoints/
+  epochs: 20
   learning_rate: 0.001
   optimizer: adam        # adam | sgd | rmsprop
   loss: sparse_categorical_crossentropy
   metrics: ["accuracy"]
   seed: 42
-  mixed_precision: false
+  mixed_precision: true
   strategy: auto         # auto | single | mirrored | tpu
 
 model:
@@ -32,4 +34,5 @@ model:
   weights: imagenet
   num_classes: 120
   drop_rate: 0.5
-  freeze_backbone: true
+  freeze_backbone: false
+  
