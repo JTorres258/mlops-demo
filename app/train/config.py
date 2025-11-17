@@ -14,6 +14,10 @@ class DataConfig(BaseModel):
             Annotated[int, Field(strict=True, gt=0)],
             Annotated[int, Field(strict=True, gt=0)],
         ] = [224, 224]  # (H, W) > 0
+    resize: Optional[Tuple[
+            Annotated[int, Field(strict=True, gt=0)],
+            Annotated[int, Field(strict=True, gt=0)],
+        ]] = None  # (H, W) > 0
     normalize: bool = True
     dtype: Literal["float32", "float16"] = "float32"
 
@@ -35,12 +39,7 @@ class AugmentConfig(BaseModel):
 
     flip_left_right: bool = False
     flip_up_down: bool = False
-    random_crop: Optional[
-        Tuple[
-            Annotated[int, Field(strict=True, gt=0)],
-            Annotated[int, Field(strict=True, gt=0)],
-        ]
-    ] = None  # (H, W) > 0
+    random_crop: bool = False
     brightness: Optional[float] = None # e.g., 0.1 for ±10% brightness adjustment
 
 
@@ -69,6 +68,7 @@ class ModelConfig(BaseModel):
     
 
 class ExperimentConfig(BaseModel):
+    experiment_name: Optional[str] = None
     data: DataConfig
     pipeline: PipelineConfig
     augment: Optional[AugmentConfig] = None
@@ -77,9 +77,18 @@ class ExperimentConfig(BaseModel):
 
     # Cross-field validation happens *after* all fields are parsed
     @model_validator(mode="after")
-    def check_flip_and_resize(self):
-        if self.augment and self.augment.random_crop and self.augment.brightness:
-            raise ValueError("brightness cannot be used when flip_left_right is True (stupid example).")
+    def check_crop_and_resize(self):
+        crop = bool(self.augment and getattr(self.augment, "random_crop", False))
+        resize = bool(self.data and getattr(self.data, "resize", False))
+
+        # They cannot both be enabled
+        if crop and resize:
+            raise ValueError("Cropping and resizing cannot be used together.")
+
+        # At least one must be enabled
+        if not crop and not resize:
+            raise ValueError("You must enable either cropping and resizing.")
+
         return self
     
 

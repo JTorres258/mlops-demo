@@ -2,6 +2,7 @@ import os
 import tensorflow as tf
 from tensorflow.keras import layers, Model
 from pathlib import Path
+import mlflow
 
 from app.train.dataset import get_dataset, prepare_dataset
 from app.train.config import load_config
@@ -11,23 +12,36 @@ for gpu_instance in physical_devices:
     tf.config.experimental.set_memory_growth(gpu_instance, True)
 
 # Retrieve config
-cfg = load_config("./configs/config_test.yml")
+cfg = load_config("./configs/static_config.yml")
 
+if cfg.train.mixed_precision:
+    tf.keras.mixed_precision.set_global_policy('mixed_float16')
+
+# Set random seed
 tf.keras.utils.set_random_seed(cfg.train.seed)
 
+# Make tracking DB path absolute so it's always consistent
+tracking_db_path = Path("mlflow.db").resolve()
+mlflow.set_tracking_uri(f"sqlite:///{tracking_db_path}")
+
+# Set or create experiment
+experiment_name = getattr(cfg, "experiment_name", None) or "dogs-finetune"
+mlflow.set_experiment(experiment_name)
+
+# Enable autologging BEFORE model creation & fit
+mlflow.keras.autolog(
+    log_models=True,          # set True if you want model artifacts
+)
+
 # Dataset
-ds_raw, ds_info = get_dataset(split="train")
+raw_train, ds_info = get_dataset(split="train[:90%]")
+raw_val, ds_info = get_dataset(split="train[90%:]")
+raw_test, ds_info = get_dataset(split="test")
 
 # Preprocessing
-ds = prepare_dataset(ds_raw, cfg, training=True)
-
-# Split in train/val
-data_size = tf.data.experimental.cardinality(ds).numpy()
-val_size = int(0.1 * data_size)
-
-raw_train = ds.shuffle(data_size, seed=cfg.train.seed, reshuffle_each_iteration=False)
-ds_val = raw_train.take(val_size)
-ds_train = raw_train.skip(val_size)
+ds_train = prepare_dataset(raw_train, cfg, training=True)
+ds_val = prepare_dataset(raw_val, cfg, training=False)
+ds_test = prepare_dataset(raw_test, cfg, training=False)
 
 # Backbone model
 arch = cfg.model.architecture
@@ -44,57 +58,59 @@ if cfg.model.freeze_backbone:
         layer.trainable = False
 
 # Head layers
-inputs = layers.Input(shape = backbone.output_shape[1:], name = "input")
-
-x = layers.GlobalMaxPooling2D()(inputs)
-x = layers.Dense(1024, activation='relu')(x)
+x = layers.GlobalAveragePooling2D()(backbone.output)
+x = layers.Dense(512, activation='relu')(x)
 x = layers.Dropout(cfg.model.drop_rate)(x)
 predictions = layers.Dense(cfg.model.num_classes, activation='softmax')(x)
 
-top_model = Model(inputs = inputs, outputs = predictions, name = "cnn_top")
-
-x = backbone.output
-
 # Joint backone + head
-predictions = top_model(x)
 model = Model(inputs=backbone.input, outputs=predictions, name = "cnn_with_top")
 
 # Compile model
-optimizer_class = getattr(tf.keras.optimizers, cfg.train.optimizer.capitalize())
+optimizer_class = getattr(tf.keras.optimizers, cfg.train.optimizer)
 optimizer = optimizer_class(learning_rate=cfg.train.learning_rate)
+
+loss_class = getattr(tf.keras.losses, cfg.train.loss)
+loss = loss_class(from_logits=False, label_smoothing=0.1)
 
 model.compile(
     optimizer=optimizer,
-    loss=cfg.train.loss,
+    loss=loss,
     metrics=cfg.train.metrics
 )
 
-# Fit the model
-if cfg.train.mixed_precision:
-    tf.keras.mixed_precision.set_global_policy('mixed_float16')
-
-Path(cfg.train.checkpoint_dir).mkdir(parents=True, exist_ok=True)
-ckpt_path = os.path.join(cfg.train.checkpoint_dir, "ckpt-{epoch:02d}-{val_loss:.4f}.keras")
+# Save the model
 callbacks = [
-        tf.keras.callbacks.ModelCheckpoint(
-            filepath=ckpt_path,
-            monitor="val_loss",
-            save_best_only=True,
-            save_weights_only=False,
-        ),
-    ]
+    tf.keras.callbacks.EarlyStopping(
+        monitor="val_loss",
+        patience=8,
+        restore_best_weights=True,
+    ),
+    tf.keras.callbacks.ReduceLROnPlateau(
+        monitor="val_loss",
+        factor=0.5,
+        patience=3,
+        min_lr=1e-7,
+    ),
+]
 
-model.fit(
-    ds_train,
-    validation_data=ds_val,
-    epochs=cfg.train.epochs,
-    verbose=1,
-    callbacks=callbacks
-)
+# Wrap training in an MLflow run
+run_name = f"{arch}-freeze={cfg.model.freeze_backbone}-lr={cfg.train.learning_rate}"
 
-# Save final model with best weights
-best_model_path = max(Path(cfg.train.checkpoint_dir).glob("ckpt-*.keras"))
-model = tf.keras.models.load_model(best_model_path)
+with mlflow.start_run(run_name=run_name):
 
-Path(cfg.train.model_dir).mkdir(parents=True, exist_ok=True)
-model.save(os.path.join(cfg.train.model_dir, "model.keras"))
+    # Optional sanity check
+    print("MLflow tracking URI:", mlflow.get_tracking_uri())
+    print("MLflow experiment:", mlflow.get_experiment(mlflow.active_run().info.experiment_id).name)
+
+    # Save the exact config used
+    mlflow.log_artifact("./config.yml", artifact_path="config")
+
+    # --- Train (autolog will record losses/metrics per epoch) ---
+    history = model.fit(
+        ds_train,
+        validation_data=ds_val,
+        epochs=cfg.train.epochs,
+        verbose=2,
+        callbacks=callbacks
+    )

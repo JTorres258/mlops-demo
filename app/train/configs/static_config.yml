@@ -1,0 +1,41 @@
+experiment_name: null
+
+data:
+  input_size: [224, 224]
+  resize: null
+  normalize: true
+  dtype: float32
+
+pipeline:
+  cache: false
+  shuffle: True
+  shuffle_buffer_size: 512
+  batch_size: 16
+  drop_remainder: false
+  prefetch: true
+
+augment:
+  flip_left_right: true
+  flip_up_down: true
+  random_crop: true
+  brightness: 0.1
+
+train:
+  model_dir: ./models/
+  checkpoint_dir: ./models/checkpoints/
+  epochs: 3
+  learning_rate: 0.0001
+  optimizer: Adam        # adam | sgd | rmsprop
+  loss: CategoricalCrossentropy
+  metrics: ["accuracy"]
+  seed: 42
+  mixed_precision: false
+  strategy: auto         # auto | single | mirrored | tpu
+
+model:
+  architecture: EfficientNetV2B0
+  weights: imagenet
+  num_classes: 120
+  drop_rate: 0.5
+  freeze_backbone: false
+  

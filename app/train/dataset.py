@@ -97,12 +97,23 @@ def data_preprocessing(
     dat = config.data
     
     # Resize video to the input size
-    if dat.input_size:
-        image = tf.image.resize(image, dat.input_size)
+    if dat.resize:
+        image = tf.image.resize(image, dat.resize, method="bilinear")
+    else:
+         # Resize so that the shortest side = 256, then center crop to target_size.
+        h = tf.shape(image)[0]
+        w = tf.shape(image)[1]
+
+        # scale factor so min(h, w) → RESIZE_MIN
+        scale = 256 / tf.cast(tf.minimum(h, w), tf.float32)
+        new_h = tf.cast(tf.round(tf.cast(h, tf.float32) * scale), tf.int32)
+        new_w = tf.cast(tf.round(tf.cast(w, tf.float32) * scale), tf.int32)
+
+        image = tf.image.resize(image, (new_h, new_w), method="bilinear")
 
     # Normalization: [0, 255] => [-1, 1] floats
     if dat.normalize:
-        image = tf.cast(image, tf.float32) * (1.0 / 127.5) - 1.0
+        image = tf.cast(image, tf.float32) / 127.5 - 1.0
         if dat.dtype == "float16":
             image = tf.cast(image, tf.float16)
 
@@ -125,8 +136,6 @@ def data_preprocessing(
             image = tf.image.random_flip_up_down(image)
 
         if getattr(aug, "random_crop", False):
-            crop_size = aug.random_crop
-
             # Check crop size is smaller than image size
             # This is done implicitly by tf.image.random_crop, but you can do:
             # tf.debugging.assert_less(
@@ -135,16 +144,18 @@ def data_preprocessing(
             # )
 
             image = tf.image.random_crop(
-                image, size=[crop_size[0], crop_size[1], tf.shape(image)[-1]]
+                image, size=[dat.input_size[0], dat.input_size[1], tf.shape(image)[-1]]
             )
 
-            # Final resize to mantaint expected input size
-            image = tf.image.resize(image, dat.input_size)
+    else:
+        image = tf.image.resize_with_crop_or_pad(
+            image, dat.input_size[0], dat.input_size[1]
+        )
 
     # Labels usually don't need modification
-    label = tf.cast(label, tf.int32)
+    label_encoded = tf.one_hot(label, config.model.num_classes)
 
-    return image, label
+    return image, label_encoded
 
 
 def save_jpg(tensor, filename):
@@ -172,7 +183,7 @@ if __name__ == "__main__":
     train_ds, ds_info = get_dataset(split="train")
     
     setattr(config.pipeline, "shuffle", False)
-    train_ds_prepared = prepare_dataset(train_ds, config, training=True)
+    train_ds_prepared = prepare_dataset(train_ds, config, training=False)
     for batch in train_ds_prepared.take(1):
         images, labels = batch
         print(tf.math.reduce_max(images), tf.math.reduce_min(images))

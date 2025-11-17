@@ -1,5 +1,8 @@
+experiment_name: null
+
 data:
   input_size: [224, 224]
+  resize: null
   normalize: true
   dtype: float32
 
@@ -14,19 +17,19 @@ pipeline:
 augment:
   flip_left_right: true
   flip_up_down: true
-  random_crop: [180, 180]
-  brightness: null
+  random_crop: true
+  brightness: 0.1
 
 train:
   model_dir: ./models/
   checkpoint_dir: ./models/checkpoints/
-  epochs: 20
-  learning_rate: 0.001
-  optimizer: adam        # adam | sgd | rmsprop
-  loss: sparse_categorical_crossentropy
+  epochs: 2
+  learning_rate: 0.0001
+  optimizer: Adam        # adam | sgd | rmsprop
+  loss: CategoricalCrossentropy
   metrics: ["accuracy"]
   seed: 42
-  mixed_precision: true
+  mixed_precision: false
   strategy: auto         # auto | single | mirrored | tpu
 
 model:
