@@ -180,7 +180,7 @@ if __name__ == "__main__":
     from PIL import Image
 
     # Example usage
-    config = load_config("./configs/config_test.yml")
+    config = load_config("./configs/base_config.yml")
     train_ds, ds_info = get_dataset(split="train")
 
     setattr(config.pipeline, "shuffle", False)
@@ -191,9 +191,19 @@ if __name__ == "__main__":
         print(images.shape, labels.shape)
         print(labels)
 
-    for raw_img, _ in train_ds.take(1):
+    
+    list_breed = []
+    with open("/home/vscode/tensorflow_datasets/stanford_dogs/0.2.0/label.labels.txt", "r") as f:
+        for line in f:
+            breed = line.strip().split("-", 1)[1]  # split only once
+            list_breed.append(breed)
+
+    for raw_img, raw_label in train_ds.take(1):
         print(raw_img.shape)
-        save_jpg(raw_img, "original.jpg")
-    for aug_img, _ in train_ds_prepared.take(1):
+        save_jpg(raw_img, f"original_{list_breed[raw_label]}.jpg")
+    for aug_img, aug_label in train_ds_prepared.take(1):
         print(aug_img[0].shape)
-        save_jpg(aug_img[0], "augmented.jpg")
+        aug_label = tf.argmax(aug_label, axis=-1)
+        print(aug_label[0])
+        save_jpg(aug_img[0], f"augment_{list_breed[aug_label[0]]}.jpg")
+    
