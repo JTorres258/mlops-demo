@@ -1,6 +1,25 @@
+// .devcontainer/devcontainer.json
 {
-	"image": "mcr.microsoft.com/devcontainers/universal:2",
-	"features": {
-		"ghcr.io/devcontainers/features/nvidia-cuda:2": {}
-	}
+  "name": "tf220-gpu",
+  "image": "tensorflow/tensorflow:2.20.0-gpu",
+  "runArgs": ["--gpus", "all"],
+  "remoteUser": "vscode",
+  "containerUser": "vscode",
+  "features": {
+    "ghcr.io/devcontainers/features/common-utils:2": {
+      "username": "vscode",
+      "userUid": 1000,
+      "userGid": 1000
+    }
+  },
+  "workspaceFolder": "/workspace",
+  "workspaceMount": "source=${localWorkspaceFolder},target=/workspace,type=bind",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-python.python",
+        "ms-python.vscode-pylance"
+      ]
+    }
+  }
 }

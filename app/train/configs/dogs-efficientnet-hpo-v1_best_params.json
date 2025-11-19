@@ -1,0 +1,19 @@
+{
+  "study_name": "dogs-efficientnet-hpo-v1",
+  "n_trials": 10,
+  "trial_number": 4,
+  "best_params": {
+    "learning_rate": 3.691927202284991e-05,
+    "drop_rate": 0.5,
+    "brightness": 0.0
+  },
+  "best_metrics": {
+    "accuracy": 0.8663889169692993,
+    "best_epoch": 44,
+    "best_epoch_idx": 43,
+    "learning_rate": 4.614908903022297e-06,
+    "loss": 1.3051222562789917,
+    "val_accuracy": 0.8183333277702332,
+    "val_loss": 1.334602952003479
+  }
+}

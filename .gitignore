@@ -1,7 +1,10 @@
 .venv/*
 mlruns/
 __pycache__/
+app/train/models/
+app/train/outputs/
 
+*.db
 *.jpg
 *.jpeg
 *.png
