@@ -25,3 +25,5 @@ app/train/outputs/
 *.flac
 *.ogg
 *.m4a
+
+!examples/*
