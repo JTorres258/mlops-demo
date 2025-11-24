@@ -61,6 +61,7 @@ def test_flip_left_right_conflicts_with_resize(tmp_path):
             """
         data:
             input_size: [224, 224]
+            resize: [180,180]
             normalize: true
             dtype: float32
 
@@ -75,7 +76,7 @@ def test_flip_left_right_conflicts_with_resize(tmp_path):
         augment:
             flip_left_right: true
             flip_up_down: false
-            random_crop: [180, 180]
+            random_crop: true
             brightness: 0.1
 
         train:
@@ -101,7 +102,7 @@ def test_flip_left_right_conflicts_with_resize(tmp_path):
         _ = load_config(bad_yaml)
 
     # Optional: assert message contains your custom text
-    assert "brightness cannot be used" in str(exc.value)
+    assert "cropping and resizing" in str(exc.value.lower())
 
 
 def test_batch_size_must_be_positive(tmp_path):
