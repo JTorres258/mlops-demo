@@ -5,6 +5,7 @@ pytest-cov
 mlflow
 scikit-learn
 optuna
+tensorflow
 tensorflow_datasets
 pillow
 pydantic
