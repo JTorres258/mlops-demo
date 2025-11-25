@@ -23,5 +23,5 @@ COPY app/train/models ./models
 
 
 # Start FastAPI with Uvicorn
-# --reload is handy for dev; remove it in production if you want
-CMD ["uvicorn", "app.api.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# --reload is handy for dev; remove it in production if you want and change the path app.api.main:app
+CMD ["uvicorn", "api.main:app", "--host", "0.0.0.0", "--port", "8000"]

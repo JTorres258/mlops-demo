@@ -25,11 +25,11 @@ templates = Jinja2Templates(directory=str(TEMPLATE_DIR))
 ALLOWED_EXTS = {".jpg", ".jpeg", ".png", ".webp", ".bmp", ".tiff"}
 
 # Model & labels
-MODEL_PATH = Path("/app/app/train/models/dogs_best_model.keras")
+MODEL_PATH = Path("./models/dogs_best_model.keras") # change path if using --reload
 model: Optional[tf.keras.Model] = None
 
 # TODO: load your real class names here (list of 120 breeds in the right order)
-CLASS_PATH = Path("/app/app/api/data/label.labels.txt")
+CLASS_PATH = Path("./api/data/label.labels.txt") # change path if using --reload
 list_breed: List[str] = []  # e.g., ["chihuahua", "japanese_spaniel", ...]
 
 

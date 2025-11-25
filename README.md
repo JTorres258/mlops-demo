@@ -192,7 +192,7 @@ COPY configs ./configs
 
 EXPOSE 8000
 
-CMD ["uvicorn", "app.api.main:app", "--host", "0.0.0.0", "--port", "8000"] # "--reload"
+CMD ["uvicorn", "api.main:app", "--host", "0.0.0.0", "--port", "8000"] # "--reload" and use "app.api.main:app"
 ```
 
 `requirements_api.txt`
@@ -239,6 +239,13 @@ To use hot reload, add the `--reload` flag when defining the container entrypoin
 ````bash
 docker run --rm -p 8000:8000 -v %cd%:/app mlops-demo-api # Or "${PWD}:/app" for Windows
 ````
+
+**IMPORTANT**
+
+When you use ``--reload``, Uvicorn watches your local folder and runs the app from there instead of using the files inside the Docker image. This makes Python import modules from a different path.
+
+That is why we need to add the `-v` flag (bind mount a volume) when running the docker. Paths inside the code are also affected, e.g., loading the model or the label text file.
+
 ---
 
 ## 📊 Evaluation $ Metrics
